@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  qm-request:
+    build: .
+    container_name: qm-request-app
+    restart: always
+    environment:
+      - TZ=Asia/Bangkok
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=qm_request_db
+      - DB_USER=admincomp
+      - DB_PASSWORD=g-9[k'[vo
+      - PORT=5000
+      - FLASK_ENV=production
+      - SECRET_KEY=qm_request_secure_secret_key_2026_x89a
+      - ADMIN_PASSWORD=admin@qm
+      - UPLOAD_FOLDER=/app/uploads
+      - MAX_CONTENT_LENGTH=10485760
+    ports:
+      - "5026:5000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./uploads:/app/uploads
+      - ./app:/app/app
+    networks:
+      - centralnet
+
+networks:
+  centralnet:
+    external: true

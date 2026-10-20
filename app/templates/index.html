@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ระบบแจ้งงานและบันทึกผลงานระบบคุณภาพ (QM Task Management & Work Log System)">
+    <title>QM Request & Daily Work Log | ระบบแจ้งงานและบันทึกผลงาน QM</title>
+
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261017_status_header_v2">
+</head>
+
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div class="brand-text">
+                    <h1 class="brand-title">QM-Request & Work Log</h1>
+                    <span class="brand-subtitle">ระบบบริหารแจ้งงานและบันทึกผลงานประจำวัน แผนกคุณภาพ (QM)</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Admin Mode Indicator Badge -->
+                <div class="admin-badge d-none" id="admin-status-badge" title="สถานะผู้ดูแลระบบ (Admin)">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Admin Mode</span>
+                    <button type="button" class="admin-badge-logout" id="btn-admin-quick-logout"
+                        title="ออกจากระบบ Admin">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div>
+
+                <button type="button" class="btn btn-secondary" id="btn-export-excel"
+                    title="ส่งออกข้อมูลทั้งหมดเป็น Excel">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>ส่งออก Excel</span>
+                </button>
+                <!-- เมนูกลุ่ม: ตั้งค่า (Settings Dropdown) -->
+                <div class="dropdown" id="dropdown-settings">
+                    <button type="button" class="btn btn-secondary dropdown-toggle" id="btn-settings-toggle"
+                        aria-haspopup="true" aria-expanded="false" title="ตั้งค่าระบบ QM">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>ตั้งค่า</span>
+                        <i class="fa-solid fa-chevron-down dropdown-caret"></i>
+                    </button>
+                    <div class="dropdown-menu" id="menu-settings" role="menu">
+                        <button type="button" class="dropdown-item" id="btn-manage-team" role="menuitem"
+                            title="จัดการรายชื่อสมาชิกทีม">
+                            <i class="fa-solid fa-users-gear text-primary"></i>
+                            <span>ตั้งค่าทีมงาน</span>
+                        </button>
+                        <button type="button" class="dropdown-item" id="btn-manage-categories" role="menuitem"
+                            title="ตั้งค่าหมวดหมู่งาน QM">
+                            <i class="fa-solid fa-tags text-indigo"></i>
+                            <span>ตั้งค่าหมวดหมู่</span>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button type="button" class="dropdown-item" id="btn-admin-login-menu" role="menuitem"
+                            title="เข้าสู่ระบบผู้ดูแลระบบ (Admin)">
+                            <i class="fa-solid fa-lock text-warning" id="admin-menu-icon"></i>
+                            <span id="btn-admin-login-menu-text">เข้าสู่ระบบ Admin</span>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-open-create-task" title="เปิดงาน QM ใหม่">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>เปิดงานใหม่</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-wrapper">
+        <!-- Navigation View Tabs: Tab รายงานตามสถานะ -->
+        <div class="status-tabs-container" aria-label="แถบรายงานตามสถานะ">
+            <div class="status-tabs-header">
+                <span class="status-tabs-title">
+                    <i class="fa-solid fa-chart-pie text-primary"></i> รายงานตามสถานะ:
+                </span>
+            </div>
+            <div class="status-tabs-nav" role="tablist" aria-label="รายงานตามสถานะ">
+                <button type="button" class="status-tab-btn active" data-status="" role="tab" aria-selected="true"
+                    id="tab-status-all">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>งานทั้งหมด</span>
+                    <span class="tab-count-badge badge-all" id="badge-status-all">0</span>
+                </button>
+                <button type="button" class="status-tab-btn" data-status="Pending" role="tab" aria-selected="false"
+                    id="tab-status-pending">
+                    <i class="fa-solid fa-clock text-amber"></i>
+                    <span>รอดำเนินการ</span>
+                    <span class="tab-count-badge badge-pending" id="badge-status-pending">0</span>
+                </button>
+                <button type="button" class="status-tab-btn" data-status="In Progress" role="tab" aria-selected="false"
+                    id="tab-status-in-progress">
+                    <i class="fa-solid fa-bars-progress text-primary"></i>
+                    <span>กำลังดำเนินการ</span>
+                    <span class="tab-count-badge badge-progress" id="badge-status-progress">0</span>
+                </button>
+                <button type="button" class="status-tab-btn" data-status="Completed" role="tab" aria-selected="false"
+                    id="tab-status-completed">
+                    <i class="fa-solid fa-circle-check text-success"></i>
+                    <span>เสร็จสิ้น (Completed)</span>
+                    <span class="tab-count-badge badge-completed" id="badge-status-completed">0</span>
+                </button>
+                <button type="button" class="status-tab-btn" data-status="Overdue" role="tab" aria-selected="false"
+                    id="tab-status-overdue">
+                    <i class="fa-solid fa-triangle-exclamation text-danger"></i>
+                    <span>เกินกำหนดส่ง</span>
+                    <span class="tab-count-badge badge-overdue" id="badge-status-overdue">0</span>
+                </button>
+                <button type="button" class="status-tab-btn" data-status="Cancelled" role="tab" aria-selected="false"
+                    id="tab-status-cancelled">
+                    <i class="fa-solid fa-ban text-secondary"></i>
+                    <span>ยกเลิก (Cancelled)</span>
+                    <span class="tab-count-badge badge-cancelled" id="badge-status-cancelled">0</span>
+                </button>
+                <button type="button" class="status-tab-btn tab-btn-summary" data-status="__summary__" role="tab"
+                    aria-selected="false" id="tab-status-summary" title="ดูตารางสรุปภาพรวมรายงานตามสถานะ">
+                    <i class="fa-solid fa-chart-column text-indigo"></i>
+                    <span>สรุปรายงานภาพรวม</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 1: Tasks View Pane -->
+        <div class="tab-pane active" id="pane-tasks">
+            <!-- Filter & Search Controls Bar -->
+            <section class="filter-panel" aria-label="แถบตัวกรองและค้นหา">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="input-search" placeholder="ค้นหาชื่องาน, รหัสงาน, ผู้รับผิดชอบ..."
+                        autocomplete="off">
+                    <button type="button" id="btn-clear-search" class="btn-clear" title="ล้างการค้นหา">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="filters-group">
+                    <div class="filter-select-wrapper">
+                        <label for="select-category" class="sr-only">หมวดหมู่งาน</label>
+                        <select id="select-category">
+                            <option value="">ทุกหมวดหมู่งาน QM</option>
+                            {% for c in categories %}
+                            <option value="{{ c.name }}">{{ c.name }}{% if c.description %} ({{ c.description }}){%
+                                endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="filter-select-wrapper">
+                        <label for="select-priority" class="sr-only">ระดับความสำคัญ</label>
+                        <select id="select-priority">
+                            <option value="">ทุกระดับความสำคัญ</option>
+                            <option value="1-Urgent">1 - ด่วนพิเศษ (Urgent)</option>
+                            <option value="2-High">2 - สำคัญสูง (High)</option>
+                            <option value="3-Normal">3 - ปกติ (Normal)</option>
+                            <option value="4-Low">4 - ทั่วไป (Low)</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-select-wrapper">
+                        <label for="select-assignee" class="sr-only">ผู้รับผิดชอบ</label>
+                        <select id="select-assignee">
+                            <option value="">เจ้าหน้าที่ทุกคน</option>
+                            {% for m in team %}
+                            <option value="{{ m.email }}">{{ m.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-outline" id="btn-reset-filters" title="รีเซ็ตตัวกรอง">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>รีเซ็ต</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Tasks Data Table & Card View -->
+            <section class="tasks-table-section" data-status-theme="all" aria-label="ตารางรายการงาน">
+                <div class="table-header-meta">
+                    <div class="meta-left">
+                        <h2 class="section-title"><span id="table-view-title">รายงานสถานะ: งานทั้งหมด
+                                (ไม่รวมงานเสร็จสิ้น/ยกเลิก)</span> (<span id="count-display">0</span> รายการ)</h2>
+                    </div>
+                    <div class="meta-right">
+                        <span class="refresh-indicator" id="status-live-indicator">
+                            <i class="fa-solid fa-circle live-dot"></i> ระบบพร้อมใช้งาน
+                        </span>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="tasks-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable-th" data-sort="task_id" style="width: 130px;" role="columnheader"
+                                    tabindex="0" title="คลิกเพื่อเรียงลำดับตามรหัสงาน">
+                                    <div class="th-content">
+                                        <span>รหัสงาน</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="task_title" role="columnheader" tabindex="0"
+                                    title="คลิกเพื่อเรียงลำดับตามชื่องาน">
+                                    <div class="th-content">
+                                        <span>ชื่องาน / ประเด็นงาน</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="category" style="width: 140px;" role="columnheader"
+                                    tabindex="0" title="คลิกเพื่อเรียงลำดับตามหมวดหมู่">
+                                    <div class="th-content">
+                                        <span>หมวดหมู่</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="priority" style="width: 115px;" role="columnheader"
+                                    tabindex="0" title="คลิกเพื่อเรียงลำดับตามความสำคัญ">
+                                    <div class="th-content">
+                                        <span>ความสำคัญ</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="assigned_to" style="width: 170px;"
+                                    role="columnheader" tabindex="0" title="คลิกเพื่อเรียงลำดับตามผู้รับผิดชอบ">
+                                    <div class="th-content">
+                                        <span>ผู้รับผิดชอบ</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="target_date" style="width: 120px;"
+                                    role="columnheader" tabindex="0" title="คลิกเพื่อเรียงลำดับตามกำหนดส่ง"
+                                    id="th-col-target-date">
+                                    <div class="th-content">
+                                        <span id="th-target-date-title">กำหนดส่ง</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="latest_progress" style="width: 135px;"
+                                    role="columnheader" tabindex="0" title="คลิกเพื่อเรียงลำดับตามความคืบหน้า"
+                                    id="th-col-progress">
+                                    <div class="th-content">
+                                        <span id="th-progress-title">ความคืบหน้า</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable-th" data-sort="status" style="width: 160px;" role="columnheader"
+                                    tabindex="0" title="คลิกเพื่อเรียงลำดับตามสถานะ" id="th-col-status">
+                                    <div class="th-content">
+                                        <span id="th-status-title">สถานะ</span>
+                                        <i class="fa-solid fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th style="width: 140px; text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-tbody">
+                            <!-- Rendered safely via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty / Loading State -->
+                <div class="state-container" id="empty-state" style="display: none;">
+                    <div class="state-icon">
+                        <i class="fa-regular fa-folder-open"></i>
+                    </div>
+                    <h3 class="state-title">ไม่พบรายการงานที่ตรงกับเงื่อนไข</h3>
+                    <p class="state-desc">ลองปรับตัวกรองค้นหา หรือกดปุ่ม "เปิดงานใหม่" เพื่อเริ่มต้นสร้างงานระบบ QM</p>
+                </div>
+
+                <div class="state-container" id="loading-state">
+                    <div class="state-spinner">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                    <p class="state-desc">กำลังโหลดข้อมูลงานระบบ QM...</p>
+                </div>
+
+                <!-- Pagination Bar -->
+                <div class="pagination-bar" id="pagination-bar">
+                    <span class="pagination-info" id="pagination-info">แสดงหน้า 1 จาก 1</span>
+                    <div class="pagination-controls" id="pagination-controls">
+                        <!-- Pagination buttons created dynamically -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: Status Summary Overview Pane -->
+        <div class="tab-pane" id="pane-status-summary" style="display: none;">
+            <!-- Summary Header Banner -->
+            <section class="summary-hero-card" aria-label="สรุปภาพรวมรายงานตามสถานะ">
+                <div class="summary-hero-content">
+                    <div class="summary-hero-title">
+                        <i class="fa-solid fa-chart-pie text-primary"></i>
+                        <span>รายงานสรุปภาพรวมตามสถานะระบบ QM (Status Summary Report)</span>
+                    </div>
+                    <p class="summary-hero-desc">สรุปภาพรวมการกระจายตัวของงานระบบ QM ตามสถานะ สัดส่วน % ความคืบหน้า
+                        และงานที่ต้องติดตามเร่งด่วน</p>
+                </div>
+                <div class="summary-hero-stat-badge">
+                    <span>งานทั้งหมด (Active):</span>
+                    <strong id="summary-total-hero">0</strong>
+                    <span>รายการ</span>
+                </div>
+            </section>
+
+            <!-- Status Distribution Progress Bar -->
+            <section class="status-distribution-section" aria-label="สัดส่วนสถานะงาน">
+                <div class="dist-header">
+                    <span class="dist-title"><i class="fa-solid fa-chart-simple text-primary"></i>
+                        สัดส่วนสถานะงานทั้งหมด (% Distribution)</span>
+                    <span class="dist-meta" id="dist-completion-rate">อัตราปิดงานสำเร็จ: 0%</span>
+                </div>
+                <div class="dist-bar-track" id="dist-bar-track">
+                    <div class="dist-segment seg-completed" id="seg-completed" style="width: 0%;" title="เสร็จสิ้น">
+                    </div>
+                    <div class="dist-segment seg-progress" id="seg-progress" style="width: 0%;" title="กำลังดำเนินการ">
+                    </div>
+                    <div class="dist-segment seg-pending" id="seg-pending" style="width: 0%;" title="รอดำเนินการ"></div>
+                    <div class="dist-segment seg-overdue" id="seg-overdue" style="width: 0%;" title="เกินกำหนด"></div>
+                    <div class="dist-segment seg-cancelled" id="seg-cancelled" style="width: 0%;" title="ยกเลิก"></div>
+                </div>
+                <div class="dist-legend" id="dist-legend">
+                    <span class="legend-item"><span class="legend-dot dot-completed"></span> เสร็จสิ้น
+                        (Completed)</span>
+                    <span class="legend-item"><span class="legend-dot dot-progress"></span> กำลังดำเนินการ (In
+                        Progress)</span>
+                    <span class="legend-item"><span class="legend-dot dot-pending"></span> รอดำเนินการ (Pending)</span>
+                    <span class="legend-item"><span class="legend-dot dot-overdue"></span> เกินกำหนดส่ง (Overdue)</span>
+                    <span class="legend-item"><span class="legend-dot dot-cancelled"></span> ยกเลิก (Cancelled)</span>
+                </div>
+            </section>
+
+            <!-- Status Breakdown Data Table -->
+            <section class="tasks-table-section" aria-label="ตารางสรุปรายงานตามสถานะ">
+                <div class="table-header-meta">
+                    <div class="meta-left">
+                        <h2 class="section-title">ตารางวิเคราะห์รายงานตามสถานะ (Status Breakdown Matrix)</h2>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="status-summary-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 220px;">สถานะงาน</th>
+                                <th style="width: 120px; text-align: center;">จำนวนงาน</th>
+                                <th style="width: 140px; text-align: center;">สัดส่วน (%)</th>
+                                <th style="width: 140px; text-align: center;">งานด่วนพิเศษ</th>
+                                <th style="width: 140px; text-align: center;">งานเกินกำหนด</th>
+                                <th style="min-width: 180px;">ความคืบหน้าเฉลี่ย</th>
+                                <th style="width: 140px; text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="status-summary-tbody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Modal 1: Create New Task -->
+    <div class="modal-backdrop" id="modal-create-task" role="dialog" aria-modal="true"
+        aria-labelledby="modal-create-title">
+        <div class="modal-dialog modal-create-dialog">
+            <div class="modal-content">
+                <div class="modal-header modal-create-header">
+                    <div class="modal-title-wrapper">
+                        <span class="modal-icon-badge"><i class="fa-solid fa-file-circle-plus"></i></span>
+                        <div>
+                            <h2 class="modal-title" id="modal-create-title">เปิดงานระบบ QM ใหม่ (New Task)</h2>
+                            <p class="modal-subtitle">บันทึกข้อมูลเพื่อมอบหมายงานใหม่และกำหนดผู้รับผิดชอบ</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-create-task" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="form-create-task">
+                    <div class="modal-body modal-create-body">
+                        <div class="create-task-tip">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span><strong>ขั้นตอนที่ 1:</strong> แจ้งงานและระบุผู้รับผิดชอบ (สถานะเริ่มต้น: <strong>"รอดำเนินการ (Pending)"</strong> เพื่อรอให้ผู้รับผิดชอบกดรับงาน)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="create-task-title" class="form-label-compact">
+                                <i class="fa-solid fa-heading text-primary"></i> ชื่องาน / หัวข้อประเด็นงาน <span class="required">*</span>
+                            </label>
+                            <input type="text" id="create-task-title" name="task_title" class="form-control-compact" required
+                                placeholder="เช่น ทบทวนคู่มือคุณภาพ ISO 9001:2015 ข้อกำหนด 7.5" maxlength="255">
+                        </div>
+
+                        <div class="form-row form-row-compact">
+                            <div class="form-group col-6">
+                                <label for="create-task-category" class="form-label-compact">
+                                    <i class="fa-solid fa-tags text-indigo"></i> หมวดหมู่งาน QM <span class="required">*</span>
+                                </label>
+                                <select id="create-task-category" name="category" class="form-control-compact" required>
+                                    <option value="" disabled selected>เลือกหมวดหมู่</option>
+                                    {% for c in categories %}
+                                    <option value="{{ c.name }}">{{ c.name }}{% if c.description %} ({{ c.description }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group col-6">
+                                <label for="create-task-priority" class="form-label-compact">
+                                    <i class="fa-solid fa-flag text-amber"></i> ระดับความสำคัญ <span class="required">*</span>
+                                </label>
+                                <select id="create-task-priority" name="priority" class="form-control-compact" required>
+                                    <option value="1-Urgent">🔥 1 - ด่วนพิเศษ (Urgent)</option>
+                                    <option value="2-High">⚡ 2 - สำคัญสูง (High)</option>
+                                    <option value="3-Normal" selected>📌 3 - ปกติ (Normal)</option>
+                                    <option value="4-Low">☕ 4 - ทั่วไป (Low)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row form-row-compact">
+                            <div class="form-group col-6">
+                                <label for="create-task-assigned" class="form-label-compact">
+                                    <i class="fa-solid fa-user-check text-success"></i> ผู้รับผิดชอบงาน <span class="required">*</span>
+                                </label>
+                                <select id="create-task-assigned" name="assigned_to" class="form-control-compact" required>
+                                    <option value="" disabled selected>เลือกเจ้าหน้าที่ผู้รับผิดชอบ</option>
+                                    {% for m in team %}
+                                    <option value="{{ m.email }}">{{ m.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group col-6">
+                                <label for="create-task-created-by" class="form-label-compact">
+                                    <i class="fa-solid fa-user-tie text-secondary"></i> ผู้เปิดงาน (หัวหน้า/Lead) <span class="required">*</span>
+                                </label>
+                                <select id="create-task-created-by" name="created_by" class="form-control-compact" required>
+                                    <option value="" disabled>เลือกผู้เปิดงาน</option>
+                                    {% for m in team %}
+                                    <option value="{{ m.email }}" data-role="{{ m.role }}">{{ m.full_name }} — {{ m.role }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="create-task-target-date" class="form-label-compact mb-0">
+                                    <i class="fa-solid fa-calendar-days text-primary"></i> วันที่กำหนดส่ง (Due Date) <span class="required">*</span>
+                                </label>
+                                <div class="quick-date-chips" id="quick-date-chips">
+                                    <span class="text-muted small me-1" style="font-size: 0.75rem;">กำหนดลัด:</span>
+                                    <button type="button" class="btn-date-chip" data-days="3" title="+3 วัน">+3 วัน</button>
+                                    <button type="button" class="btn-date-chip active" data-days="7" title="+7 วัน">+7 วัน</button>
+                                    <button type="button" class="btn-date-chip" data-days="14" title="+14 วัน">+14 วัน</button>
+                                    <button type="button" class="btn-date-chip" data-days="30" title="+30 วัน">+30 วัน</button>
+                                </div>
+                            </div>
+                            <input type="date" id="create-task-target-date" name="target_date" class="form-control-compact" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="create-task-description" class="form-label-compact">
+                                <i class="fa-solid fa-align-left text-secondary"></i> รายละเอียดงาน / คำอธิบายงาน <span class="text-muted fw-normal" style="font-size: 0.75rem;">(ถ้ามี)</span>
+                            </label>
+                            <textarea id="create-task-description" name="task_description" rows="2" class="form-control-compact"
+                                placeholder="ระบุรายละเอียดงาน ขอบเขต หรือสิ่งที่ต้องดำเนินการเพิ่มเติม..." maxlength="2000"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer modal-create-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-close="modal-create-task">
+                            <i class="fa-solid fa-xmark"></i> ยกเลิก
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-create-task">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>บันทึกเปิดงาน</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Log Work Progress -->
+    <div class="modal-backdrop" id="modal-log-work" role="dialog" aria-modal="true" aria-labelledby="modal-log-title">
+        <div class="modal-dialog modal-log-compact">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-clipboard-check modal-icon"></i>
+                        <h2 class="modal-title" id="modal-log-title">บันทึกผลงานประจำวัน (Daily Work Log)</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-log-work" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="form-log-work" enctype="multipart/form-data">
+                    <input type="hidden" id="log-task-id" name="task_id">
+                    <input type="hidden" id="log-auto-accept" name="auto_accept" value="true">
+
+                    <div class="modal-body compact-modal-body">
+                        <!-- Task Selection Dropdown (Only shown if opened from header without preselected task) -->
+                        <div class="form-group compact-group" id="log-task-select-group">
+                            <label for="log-task-select" class="compact-label">เลือกงาน QM ที่ปฏิบัติงาน <span
+                                    class="required">*</span></label>
+                            <select id="log-task-select" class="form-select form-select-sm" required>
+                                <option value="" disabled selected>-- เลือกงาน QM ที่ต้องการบันทึกผลงาน --</option>
+                            </select>
+                        </div>
+
+                        <!-- Compact Task Summary Banner (Single line strip) -->
+                        <div class="compact-task-strip" id="log-task-banner" style="display: none;">
+                            <span class="badge badge-primary task-badge-id" id="log-banner-badge">รหัสงาน</span>
+                            <span class="compact-task-title" id="log-banner-title">ชื่องาน...</span>
+                            <span class="badge" id="log-banner-status">สถานะ</span>
+                            <span class="compact-meta-item"><i class="fa-solid fa-user-check"></i> <strong
+                                    id="log-banner-assignee">-</strong></span>
+                            <span class="compact-meta-item"><i class="fa-regular fa-calendar"></i> <span
+                                    id="log-banner-due">-</span></span>
+                            <span class="compact-meta-item"><i class="fa-solid fa-chart-pie"></i> <strong
+                                    id="log-banner-progress">0%</strong></span>
+                        </div>
+
+                        <!-- Pending Notice Alert (Compact with 1-Click Accept Action) -->
+                        <div class="alert-box alert-notice alert-compact alert-with-action" id="log-pending-alert"
+                            style="display: none;">
+                            <div class="alert-icon-text">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>งานนี้อยู่ในสถานะ <strong>รอดำเนินการ (Pending)</strong> —
+                                    สามารถกดรับงานได้ทันที</span>
+                            </div>
+                            <button type="button" class="btn btn-warning btn-xs" id="btn-modal-accept-pending"
+                                title="กดรับงานนี้เพื่อเปลี่ยนสถานะเป็น กำลังดำเนินการ (In Progress)">
+                                <i class="fa-solid fa-handshake"></i> กดรับงานนี้ทันที
+                            </button>
+                        </div>
+
+                        <!-- Row 1: Date & Reporter (Side-by-Side) -->
+                        <div class="form-row compact-row">
+                            <div class="form-group col-6 compact-group">
+                                <label for="log-date" class="compact-label">วันที่ปฏิบัติงาน <span
+                                        class="required">*</span></label>
+                                <input type="date" id="log-date" name="log_date" required class="form-control-sm">
+                            </div>
+
+                            <div class="form-group col-6 compact-group">
+                                <label for="log-reporter" class="compact-label">ผู้บันทึกรายงาน <span
+                                        class="required">*</span></label>
+                                <select id="log-reporter" name="reporter" required class="form-control-sm">
+                                    {% for m in team %}
+                                    <option value="{{ m.email }}">{{ m.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Progress (Preset Chips & Slider on One Screen) -->
+                        <div class="form-group compact-group progress-compact-card">
+                            <div class="progress-top-row">
+                                <label for="log-progress-slider" class="compact-label progress-label-wrap">
+                                    <span>ความคืบหน้าสะสม:</span>
+                                    <strong id="progress-val-text" class="text-primary font-bold">50%</strong>
+                                </label>
+                                <!-- Quick Percentage Presets -->
+                                <div class="quick-preset-container compact-presets" id="quick-preset-container">
+                                    <span class="preset-label-sm">ลัด:</span>
+                                    <button type="button" class="btn-preset-chip" data-pct="25">25%</button>
+                                    <button type="button" class="btn-preset-chip" data-pct="50">50%</button>
+                                    <button type="button" class="btn-preset-chip" data-pct="75">75%</button>
+                                    <button type="button" class="btn-preset-chip btn-preset-100" data-pct="100">
+                                        <i class="fa-solid fa-flag-checkered"></i> 100% (ปิดงาน)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="slider-container compact-slider-box">
+                                <input type="range" id="log-progress-slider" name="progress_pct" min="0" max="100"
+                                    value="50" step="5">
+                            </div>
+
+                            <!-- 100% Complete Alert Notice (Compact Inline) -->
+                            <div class="alert-box alert-success alert-compact" id="log-complete-alert"
+                                style="display: none;">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>🎉 <strong>ความคืบหน้าครบ 100% เท่ากับปิดงาน</strong> — ระบบจะเปลี่ยนสถานะเป็น
+                                    <strong>เสร็จสิ้น (Completed)</strong> อัตโนมัติ</span>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Work Summary (Essential) -->
+                        <div class="form-group compact-group">
+                            <label for="log-work-summary" class="compact-label">รายละเอียดการปฏิบัติงานในวันนี้ <span
+                                    class="required">*</span></label>
+                            <textarea id="log-work-summary" name="work_summary" rows="2" required
+                                placeholder="ระบุสิ่งที่ดำเนินการสำเร็จ, ข้อค้นพบ, หรือผลการปฏิบัติงาน"></textarea>
+                        </div>
+
+                        <!-- Row 4: Optional Extra Fields (Collapsible / Non-intrusive) -->
+                        <div class="extra-toggle-section">
+                            <button type="button" class="btn-toggle-extra" id="btn-toggle-extra-log">
+                                <i class="fa-solid fa-paperclip"></i>
+                                <span>แนบไฟล์หลักฐาน หรือระบุปัญหาติดขัด (ถ้ามี)</span>
+                                <i class="fa-solid fa-chevron-down toggle-arrow" id="extra-toggle-arrow"></i>
+                            </button>
+                            <div class="extra-fields-panel" id="extra-fields-panel" style="display: none;">
+                                <div class="form-row compact-row">
+                                    <div class="form-group col-6 compact-group">
+                                        <label for="log-issue-blocker" class="compact-label">ปัญหาที่ติดขัด /
+                                            ประเด็นรอแก้ไข</label>
+                                        <input type="text" id="log-issue-blocker" name="issue_blocker"
+                                            placeholder="ระบุอุปสรรค (ถ้ามี เว้นว่างได้)">
+                                    </div>
+
+                                    <div class="form-group col-6 compact-group">
+                                        <label for="log-evidence-file" class="compact-label">แนบไฟล์หลักฐาน (PDF, รูป,
+                                            Excel)</label>
+                                        <input type="file" id="log-evidence-file" name="evidence_file"
+                                            accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx,.xls" class="compact-file-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer: Always pinned and 100% visible on a single screen without scrolling -->
+                    <div class="modal-footer compact-modal-footer">
+                        <button type="button" class="btn btn-secondary" data-close="modal-log-work">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-log">
+                            <i class="fa-solid fa-floppy-disk" id="btn-submit-log-icon"></i>
+                            <span id="btn-submit-log-text">บันทึกความคืบหน้า</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Task Details & History Timeline -->
+    <div class="modal-backdrop" id="modal-task-detail" role="dialog" aria-modal="true"
+        aria-labelledby="modal-detail-title">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-timeline modal-icon"></i>
+                        <h2 class="modal-title" id="modal-detail-title">รายละเอียดงานและประวัติความคืบหน้า</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-task-detail" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="detail-modal-body">
+                    <!-- Dynamic Task Meta Cards & Timeline rendered securely via JS -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" id="btn-detail-accept-task" style="display: none;">
+                        <i class="fa-solid fa-handshake"></i> รับงานนี้
+                    </button>
+                    <button type="button" class="btn btn-danger-outline" id="btn-detail-cancel-task"
+                        style="display: none;">
+                        <i class="fa-solid fa-ban"></i> ยกเลิกงานนี้
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btn-detail-delete-task" style="display: none;">
+                        <i class="fa-solid fa-trash"></i> ลบงานนี้
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-close="modal-task-detail">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Team Management -->
+    <div class="modal-backdrop" id="modal-team" role="dialog" aria-modal="true" aria-labelledby="modal-team-title">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-users modal-icon"></i>
+                        <h2 class="modal-title" id="modal-team-title">รายชื่อเจ้าหน้าที่ในทีม QM (Team Roster)</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-team" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-add-team-member" class="team-add-form">
+                        <input type="hidden" id="team-original-email" value="">
+                        <h3 class="form-subtitle"><i class="fa-solid fa-user-plus" id="team-form-icon"></i> <span
+                                id="team-form-title">เพิ่มสมาชิกใหม่</span></h3>
+                        <div class="form-row">
+                            <div class="form-group col-4">
+                                <label for="team-emp-id">รหัสพนักงาน</label>
+                                <input type="text" id="team-emp-id" placeholder="QM005">
+                            </div>
+                            <div class="form-group col-8">
+                                <label for="team-email">อีเมล (Email Login) <span class="required">*</span></label>
+                                <input type="email" id="team-email" required placeholder="officer@company.com">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label for="team-fullname">ชื่อ-นามสกุล <span class="required">*</span></label>
+                                <input type="text" id="team-fullname" required placeholder="ชื่อ-นามสกุล">
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="team-role">บทบาทหน้าที่ <span class="required">*</span></label>
+                                <input type="text" id="team-role" required placeholder="เช่น QM Auditor, QC Officer">
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top: 6px;">
+                            <div class="form-group col-12">
+                                <label for="team-is-active">สถานะการทำงาน</label>
+                                <select id="team-is-active">
+                                    <option value="true" selected>Active (ปฏิบัติงานอยู่)</option>
+                                    <option value="false">Inactive (ระงับการใช้งาน)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+                            <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-edit-team"
+                                style="display: none;">
+                                <i class="fa-solid fa-xmark"></i> ยกเลิก
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-team">
+                                <i class="fa-solid fa-plus" id="btn-submit-team-icon"></i> <span
+                                    id="btn-submit-team-text">บันทึกสมาชิก</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <h3 class="form-subtitle" style="margin-top: 20px;"><i class="fa-solid fa-list"></i>
+                        รายชื่อสมาชิกปัจจุบัน</h3>
+                    <div class="team-list" id="team-members-list">
+                        <!-- Populated safely via JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="modal-team">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4b: Category Settings -->
+    <div class="modal-backdrop" id="modal-categories" role="dialog" aria-modal="true"
+        aria-labelledby="modal-categories-title">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-tags modal-icon"></i>
+                        <h2 class="modal-title" id="modal-categories-title">ตั้งค่าหมวดหมู่งาน QM (Categories)</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-categories" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-category" class="team-add-form">
+                        <input type="hidden" id="cat-id" value="">
+                        <h3 class="form-subtitle"><i class="fa-solid fa-plus" id="cat-form-icon"></i> <span
+                                id="cat-form-title">เพิ่มหมวดหมู่ใหม่</span></h3>
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label for="cat-name">ชื่อหมวดหมู่ <span class="required">*</span></label>
+                                <input type="text" id="cat-name" required maxlength="100"
+                                    placeholder="เช่น Calibration">
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="cat-description">คำอธิบาย (ภาษาไทย)</label>
+                                <input type="text" id="cat-description" maxlength="150"
+                                    placeholder="เช่น สอบเทียบเครื่องมือวัด">
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top: 6px;">
+                            <div class="form-group col-12">
+                                <label for="cat-is-active">สถานะ</label>
+                                <select id="cat-is-active">
+                                    <option value="true" selected>Active (แสดงให้เลือกตอนเปิดงาน)</option>
+                                    <option value="false">Inactive (ซ่อนจากการเปิดงานใหม่)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+                            <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-edit-cat"
+                                style="display: none;">
+                                <i class="fa-solid fa-xmark"></i> ยกเลิก
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-cat">
+                                <i class="fa-solid fa-plus" id="btn-submit-cat-icon"></i> <span
+                                    id="btn-submit-cat-text">บันทึกหมวดหมู่</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <h3 class="form-subtitle" style="margin-top: 20px;"><i class="fa-solid fa-list"></i> หมวดหมู่ทั้งหมด
+                    </h3>
+                    <div class="team-list" id="categories-list">
+                        <!-- Populated safely via JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="modal-categories">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: Cancel Task Confirmation -->
+    <div class="modal-backdrop" id="modal-cancel-task" role="dialog" aria-modal="true"
+        aria-labelledby="modal-cancel-title">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header modal-header-danger">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-triangle-exclamation text-danger modal-icon"></i>
+                        <h2 class="modal-title" id="modal-cancel-title">ยืนยันการยกเลิกงาน</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-cancel-task" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="cancel-task-prompt-text" class="text-secondary"
+                        style="margin-bottom: 0.85rem; font-size: 0.875rem;">คุณต้องการยกเลิกงานนี้ใช่หรือไม่?</p>
+                    <div class="form-group compact-group">
+                        <label for="cancel-reason-input" class="compact-label">เหตุผลการยกเลิก
+                            (ระบุหรือไม่ก็ได้):</label>
+                        <input type="text" id="cancel-reason-input" class="form-control-sm"
+                            placeholder="เช่น แจ้งงานซ้ำซ้อน, เปลี่ยนแปลงแผน ฯลฯ">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="modal-cancel-task">ไม่ยกเลิก</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirm-cancel-task">
+                        <i class="fa-solid fa-ban"></i> ยืนยันยกเลิกงาน
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Admin Login -->
+    <div class="modal-backdrop" id="modal-admin-login" role="dialog" aria-modal="true"
+        aria-labelledby="modal-admin-login-title">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-shield-halved modal-icon text-warning"></i>
+                        <h2 class="modal-title" id="modal-admin-login-title">เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-admin-login" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="form-admin-login">
+                    <div class="modal-body">
+                        <p class="modal-desc"
+                            style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+                            กรุณากรอกรหัสผ่าน <strong>Admin Passcode</strong> เพื่อปลดล็อกสิทธิ์การลบรายการงาน,
+                            ลบประวัติบันทึกผลงาน, จัดการสมาชิก และหมวดหมู่
+                        </p>
+                        <div class="form-group">
+                            <label for="admin-password-input">รหัสผ่าน Admin <span class="required">*</span></label>
+                            <div class="password-input-wrapper" style="position: relative;">
+                                <input type="password" id="admin-password-input" name="password" required
+                                    placeholder="กรอกรหัสผ่าน Admin" autocomplete="current-password"
+                                    style="padding-right: 2.75rem; width: 100%;">
+                                <button type="button" id="btn-toggle-admin-password" class="btn-icon-input"
+                                    title="แสดง/ซ่อนรหัสผ่าน" tabindex="-1">
+                                    <i class="fa-solid fa-eye" id="icon-toggle-admin-password"></i>
+                                </button>
+                            </div>
+                            <div id="admin-login-error" class="text-danger"
+                                style="display: none; margin-top: 6px; font-size: 0.8125rem;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-close="modal-admin-login">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-admin-login">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span id="btn-submit-admin-login-text">เข้าสู่ระบบ</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Delete Dialog -->
+    <div class="modal-backdrop" id="modal-confirm-delete" role="dialog" aria-modal="true"
+        aria-labelledby="modal-confirm-delete-title">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header header-danger">
+                    <div class="modal-title-wrapper">
+                        <i class="fa-solid fa-triangle-exclamation modal-icon text-danger"></i>
+                        <h2 class="modal-title" id="modal-confirm-delete-title">ยืนยันการลบข้อมูล (Admin)</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" data-close="modal-confirm-delete" aria-label="ปิด">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="delete-confirm-content">
+                        <p id="delete-confirm-message"
+                            style="margin-bottom: 0.75rem; font-size: 0.9375rem; color: var(--text-primary); line-height: 1.5;">
+                        </p>
+                        <div class="alert-box alert-compact"
+                            style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #dc2626; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8125rem;">
+                            <i class="fa-solid fa-circle-exclamation"></i> การดำเนินการนี้ไม่สามารถยกเลิกได้
+                            ข้อมูลและไฟล์ที่เกี่ยวข้องจะถูกลบถาวร
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="modal-confirm-delete">ยกเลิก</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirm-delete-execute">
+                        <i class="fa-solid fa-trash" id="btn-confirm-delete-icon"></i>
+                        <span id="btn-confirm-delete-text">ยืนยันลบข้อมูล</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+    <script>
+        window.APP_CONFIG = {
+            basePath: "{{ url_for('index') }}"
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=20261017_status_header_v2"></script>
+</body>
+
+</html>
